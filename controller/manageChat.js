@@ -42,8 +42,3 @@ export const addmessage = asyncwrappe(async (req, res) => {
     throw err;
   }
 });
-
-export const registerOnline = asyncwrappe(async (req, res) => {
-  console.log("user online", req.body);
-  res.json({ message: "user online registered" });
-});

@@ -114,3 +114,14 @@ export const setoffline = asyncwrappe(async (req, res) => {
   console.log("setoffline user:", user);
   res.json({ status: true, message: "User is offline" });
 });
+
+export const registerOnline = asyncwrappe(async (req, res) => {
+  console.log("user online", req.body);
+  const userid = req.body.userId;
+  const user = await userSchema.findByIdAndUpdate(
+    userid,
+    { isOnline: true },
+    { new: true, select: "-password" }
+  );
+  res.json({ message: "user online registered", user });
+});

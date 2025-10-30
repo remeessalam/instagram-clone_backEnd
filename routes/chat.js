@@ -10,6 +10,5 @@ const routes = express.Router();
 
 routes.route("/getchat").post(verify, getchat);
 routes.route("/addmessage").post(verify, addmessage);
-routes.route("/registerOnline").post(registerOnline);
 
 export default routes;

@@ -14,6 +14,7 @@ import {
   addprofilepicture,
   setonline,
   setoffline,
+  registerOnline,
 } from "../controller/manageUser.js";
 
 const routes = express.Router();
@@ -33,5 +34,6 @@ routes.route("/getfollowing").get(verify, getfollowing);
 routes.route("/setprofilepicture").post(verify, addprofilepicture);
 routes.route("/setonline").post(verify, setonline);
 routes.route("/setoffline").post(setoffline);
+routes.route("/registerOnline").post(registerOnline);
 
 export default routes;
