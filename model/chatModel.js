@@ -6,8 +6,6 @@ const chatSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
-        lastSeen: Date,
-        isOnline: Boolean,
       },
     ],
     messages: [
