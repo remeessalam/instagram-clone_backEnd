@@ -62,6 +62,8 @@ const userSchema = new mongoose.Schema(
     ],
     isVerified: { type: Boolean, default: false },
     isPrivate: { type: Boolean, default: false },
+    isOnline: { type: Boolean, default: false },
+    lastSeen: Date,
     lastLogin: Date,
     resetPasswordToken: String,
     resetPasswordExpire: Date,

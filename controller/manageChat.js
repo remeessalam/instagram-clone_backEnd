@@ -10,13 +10,13 @@ export const getchat = asyncwrappe(async (req, res) => {
   try {
     let chat = await chatSchema
       .findOne({ users: { $all: [friendId, user] } })
-      .populate("users", "_id name image");
+      .populate("users", "_id name image isOnline lastSeen");
 
     const chatdetail = chat
       ? chat
       : await (
           await chatSchema.create({ users: [friendId, user] })
-        ).populate("users", "_id name image");
+        ).populate("users", "_id name image isOnline lastSeen");
 
     res.json({ chatdetail });
   } catch (err) {

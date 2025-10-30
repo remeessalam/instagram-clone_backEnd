@@ -12,6 +12,8 @@ import {
   finduser,
   getfollowing,
   addprofilepicture,
+  setonline,
+  setoffline,
 } from "../controller/manageUser.js";
 
 const routes = express.Router();
@@ -29,5 +31,7 @@ routes.route("/unfollow").post(verify, unfollow);
 routes.route("/finduser").post(verify, finduser);
 routes.route("/getfollowing").get(verify, getfollowing);
 routes.route("/setprofilepicture").post(verify, addprofilepicture);
+routes.route("/setonline").post(verify, setonline);
+routes.route("/setoffline").post(setoffline);
 
 export default routes;

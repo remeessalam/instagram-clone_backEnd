@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
@@ -7,6 +6,8 @@ const chatSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
+        lastSeen: Date,
+        isOnline: Boolean,
       },
     ],
     messages: [
@@ -14,7 +15,10 @@ const chatSchema = new mongoose.Schema(
         roomId: String,
         author: String,
         text: String,
-        time: String,
+        createdAt: Date,
+        upDateAt: Date,
+        send: Boolean,
+        messageSeen: { seen: Boolean, seenTime: Date },
       },
     ],
   },

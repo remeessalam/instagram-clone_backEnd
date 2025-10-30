@@ -94,3 +94,23 @@ export const addprofilepicture = asyncwrappe(async (req, res) => {
   const data = await userSchema.findById(userid);
   res.json({ status: true, user: data });
 });
+
+export const setonline = asyncwrappe(async (req, res) => {
+  const userid = req.userId;
+  await userSchema.findByIdAndUpdate(userid, { isOnline: true });
+  res.json({ status: true, message: "User is online", userId: userid });
+});
+
+export const setoffline = asyncwrappe(async (req, res) => {
+  const userid = req.body.userId;
+  const user = await userSchema.findByIdAndUpdate(
+    userid,
+    {
+      isOnline: false,
+      lastSeen: new Date(),
+    },
+    { new: true, select: "-password" }
+  );
+  console.log("setoffline user:", user);
+  res.json({ status: true, message: "User is offline" });
+});
