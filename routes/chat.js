@@ -1,9 +1,5 @@
 import express from "express";
-import {
-  getchat,
-  addmessage,
-  registerOnline,
-} from "../controller/manageChat.js";
+import { getchat, addmessage } from "../controller/manageChat.js";
 import verify from "../middleware/token.js";
 
 const routes = express.Router();
