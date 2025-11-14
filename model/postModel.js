@@ -1,11 +1,10 @@
-
 import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "user",
+      ref: "User",
     },
     image: {
       type: Array,
@@ -24,7 +23,7 @@ const postSchema = new mongoose.Schema(
         },
         commentBy: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "user",
+          ref: "User",
         },
         commentAt: {
           type: Date,
@@ -38,6 +37,6 @@ const postSchema = new mongoose.Schema(
   }
 );
 
-const Post = mongoose.model("post", postSchema);
+const Post = mongoose.model("Post", postSchema);
 
 export default Post;

@@ -13,7 +13,7 @@ import mongoose from "mongoose";
 export const getchat = asyncwrappe(async (req, res) => {
   const userId = req.userId;
   const { id: friendId } = req.body;
-
+  console.log(friendId);
   // Validation
   if (!friendId) {
     return res.status(400).json({

@@ -34,8 +34,9 @@ export const checkusername = asyncwrappe(async (req, res) => {
  */
 export const updateProfile = asyncwrappe(async (req, res) => {
   const userId = req.userId; // From auth middleware
-  const { profileImage, name, gender, biography, isPrivate } = req.body;
-
+  const { profileImage, name, gender, biography, isPrivate } =
+    req.body.form.form;
+  console.log(req.body);
   // Validate input
   const updateData = {};
   if (profileImage) updateData.profileImage = profileImage;

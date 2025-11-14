@@ -38,7 +38,7 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production" ? process.env.CORS_ORIGIN : "*",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT"],
     credentials: true,
   })
 );
