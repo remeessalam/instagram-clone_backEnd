@@ -36,14 +36,15 @@ const connectDB = async () => {
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.NODE_ENV === 'production' ? process.env.CORS_ORIGIN : '*',
+    origin:
+      process.env.NODE_ENV === "production" ? process.env.CORS_ORIGIN : "*",
     methods: ["GET", "POST"],
     credentials: true,
   })
 );
 
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
 }
 
 app.use(express.json({ limit: "10mb" }));
