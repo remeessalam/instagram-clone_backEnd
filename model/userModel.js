@@ -20,6 +20,12 @@ const userSchema = new mongoose.Schema(
       match: /^[a-zA-Z0-9._]+$/,
       index: true,
     },
+    profileImage: {
+      type: String,
+      default: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+    },
+    biography: { type: String, maxlength: 200, default: "" },
+    isPrivate: { type: Boolean, default: false },
     email: {
       type: String,
       lowercase: true,
@@ -40,44 +46,20 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false,
     },
-    profileImage: {
-      type: String,
-      default: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
-    },
-    coverImage: String,
-    dateOfBirth: Date,
-    bio: { type: String, maxlength: 200, default: "" },
+
+    date_of_birth: Date,
     gender: {
       type: String,
       enum: ["Male", "Female", "Custom", "Prefer not to say"],
       default: "Prefer not to say",
     },
-    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
-    friendRequests: [
-      {
-        from: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-        createdAt: { type: Date, default: Date.now },
-      },
-    ],
-    isVerified: { type: Boolean, default: false },
-    isPrivate: { type: Boolean, default: false },
+    followers_count: { type: Number, default: 0 },
+    following_count: { type: Number, default: 0 },
     isOnline: { type: Boolean, default: false },
     lastSeen: Date,
-    lastLogin: Date,
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
-
-// Virtual fields
-userSchema.virtual("followersCount").get(function () {
-  return this.followers?.length || 0;
-});
-userSchema.virtual("followingCount").get(function () {
-  return this.following?.length || 0;
-});
 
 // Indexes
 userSchema.index({ username: 1, email: 1 });

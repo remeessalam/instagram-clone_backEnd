@@ -1,4 +1,3 @@
-
 import { asyncwrappe } from "../middleware/asyncwrapper.js";
 import postSchema from "../model/postModel.js";
 import notificationSchema from "../model/notificationModel.js";
@@ -21,12 +20,12 @@ const upload = asyncwrappe((req, res) => {
           posteduser: req.userId,
           time: new Date(),
         };
-        notificationSchema
-          .updateMany(
-            { user: { $in: [...followers] } },
-            { $push: { posts: { $each: [noty], $position: 0 } } }
-          )
-          .then(() => {});
+        // notificationSchema
+        //   .updateMany(
+        //     { user: { $in: [...followers] } },
+        //     { $push: { posts: { $each: [noty], $position: 0 } } }
+        //   )
+        //   .then(() => {});
       });
     });
 });

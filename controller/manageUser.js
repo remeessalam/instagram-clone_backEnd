@@ -1,127 +1,498 @@
-import userSchema from "../model/userModel.js";
+import User from "../model/userModel.js";
+import Follow from "../model/followModel.js";
 import { asyncwrappe } from "../middleware/asyncwrapper.js";
+import mongoose from "mongoose";
 
+/**
+ * Check if username exists
+ */
 export const checkusername = asyncwrappe(async (req, res) => {
   const { username } = req.body;
-  const checkusername = await userSchema.findOne({ username });
-  res.status(201).json({ msg: checkusername ? "user" : "no-user" });
-});
 
-export const updateProfile = asyncwrappe(async (req, res) => {
-  const { form, user } = req.body;
-  const useid = user.userId;
-  console.log(form.form);
-  const use = await userSchema.findByIdAndUpdate(useid, {
-    profileImage: form.form.profileImage,
-    name: form.form.name,
-    gender: form.form.gender,
-    bio: form.form.bio,
-    isPrivate: form.form.isPrivate,
+  if (!username || username.trim().length === 0) {
+    return res.status(400).json({
+      status: false,
+      message: "Username is required",
+    });
+  }
+
+  const userExists = await User.findOne({
+    username: username.toLowerCase().trim(),
+  })
+    .select("_id")
+    .lean();
+
+  res.status(200).json({
+    status: true,
+    exists: !!userExists,
+    message: userExists ? "Username taken" : "Username available",
   });
-  res.json({ status: true, user: use });
 });
 
+/**
+ * Update user profile
+ */
+export const updateProfile = asyncwrappe(async (req, res) => {
+  const userId = req.userId; // From auth middleware
+  const { profileImage, name, gender, biography, isPrivate } = req.body;
+
+  // Validate input
+  const updateData = {};
+  if (profileImage) updateData.profileImage = profileImage;
+  if (name) updateData.name = name;
+  if (gender) updateData.gender = gender;
+  if (biography !== undefined) updateData.biography = biography;
+  if (typeof isPrivate === "boolean") updateData.isPrivate = isPrivate;
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: updateData },
+    { new: true, runValidators: true, select: "-password" }
+  ).lean();
+
+  if (!updatedUser) {
+    return res.status(404).json({
+      status: false,
+      message: "User not found",
+    });
+  }
+
+  res.json({
+    status: true,
+    message: "Profile updated successfully",
+    user: updatedUser,
+  });
+});
+
+/**
+ * Get current authenticated user with follow counts
+ */
 export const getuser = asyncwrappe(async (req, res) => {
-  const user = req.userId;
-  const userdetails = await userSchema
-    .findOne({ _id: user })
-    .populate("followers")
-    .populate("following");
-  res.json({ status: true, user: userdetails });
+  const userId = req.userId;
+
+  const user = await User.findById(userId).select("-password").lean();
+
+  if (!user) {
+    return res.status(404).json({
+      status: false,
+      message: "User not found",
+    });
+  }
+
+  res.json({
+    status: true,
+    user,
+  });
 });
 
+/**
+ * Get another user's profile (friend/other user)
+ */
 export const getfriend = asyncwrappe(async (req, res) => {
-  const user = req.body.id;
-  const frienddetails = await userSchema
-    .findOne({ _id: user })
-    .populate("followers")
-    .populate("following");
-  res.json({ status: true, frienddetails });
+  const { id } = req.body;
+  const currentUserId = req.userId;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      status: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  const friendDetails = await User.findById(id).select("-password").lean();
+
+  if (!friendDetails) {
+    return res.status(404).json({
+      status: false,
+      message: "User not found",
+    });
+  }
+
+  // Check if current user follows this friend
+  const followRelation = await Follow.findOne({
+    follower: currentUserId,
+    following: id,
+  }).lean();
+
+  res.json({
+    status: true,
+    friendDetails: {
+      ...friendDetails,
+      isFollowing: !!followRelation,
+    },
+  });
 });
 
+/**
+ * Get suggested users (users not followed by current user)
+ */
 export const users = asyncwrappe(async (req, res) => {
-  const userid = req.userId;
-  const user = await userSchema.findById(userid);
+  const userId = req.userId;
+  const limit = parseInt(req.query.limit) || 5;
+
+  // Get users that current user is following
+  const following = await Follow.find({ follower: userId })
+    .select("following")
+    .lean();
+
+  const followingIds = following.map((f) => f.following);
+
+  // Find users not in following list and not self
+  const suggestedUsers = await User.find({
+    _id: { $nin: [...followingIds, userId] },
+  })
+    .select("-password")
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  res.json({
+    status: true,
+    users: suggestedUsers,
+  });
+});
+
+/**
+ * Follow a user
+ */
+export const follow = asyncwrappe(async (req, res) => {
+  const { frndid } = req.body;
+  const userId = req.userId;
+
+  if (!mongoose.Types.ObjectId.isValid(frndid)) {
+    return res.status(400).json({
+      status: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  if (userId === frndid) {
+    return res.status(400).json({
+      status: false,
+      message: "Cannot follow yourself",
+    });
+  }
+
+  // Check if user exists
+  const targetUser = await User.findById(frndid).select("_id").lean();
+  if (!targetUser) {
+    return res.status(404).json({
+      status: false,
+      message: "User not found",
+    });
+  }
+
+  // Check if already following
+  const existingFollow = await Follow.findOne({
+    follower: userId,
+    following: frndid,
+  });
+
+  if (existingFollow) {
+    return res.status(400).json({
+      status: false,
+      message: "Already following this user",
+    });
+  }
+
+  // Use session for atomic operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const data = await userSchema
-      .find({ _id: { $nin: [...user.following, userid] } }, { password: 0 })
-      .sort({ createdAt: "-1" })
-      .limit(5);
-    res.json({ status: true, user: data });
-  } catch (err) {
-    throw err;
+    // Create follow relationship
+    await Follow.create(
+      [
+        {
+          user: userId, // The relationship owner (for potential future use)
+          follower: userId,
+          following: frndid,
+        },
+      ],
+      { session }
+    );
+
+    // Update counts
+    await User.findByIdAndUpdate(
+      userId,
+      { $inc: { following_count: 1 } },
+      { session }
+    );
+
+    await User.findByIdAndUpdate(
+      frndid,
+      { $inc: { followers_count: 1 } },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    res.json({
+      status: true,
+      message: "Successfully followed user",
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
 });
 
-export const follow = asyncwrappe(async (req, res) => {
-  const frndId = req.body.frndid;
-  const userid = req.userId;
-  await userSchema.findByIdAndUpdate(userid, {
-    $addToSet: { following: frndId },
-  });
-  const data = await userSchema.findByIdAndUpdate(frndId, {
-    $addToSet: { followers: userid },
-  });
-  res.json({ status: true, resolve: data });
-});
-
+/**
+ * Unfollow a user
+ */
 export const unfollow = asyncwrappe(async (req, res) => {
-  const frndId = req.body.frndid;
-  const userid = req.userId;
-  await userSchema.findByIdAndUpdate(userid, { $pull: { following: frndId } });
-  const data = await userSchema.findByIdAndUpdate(frndId, {
-    $pull: { followers: userid },
+  const { frndid } = req.body;
+  const userId = req.userId;
+
+  if (!mongoose.Types.ObjectId.isValid(frndid)) {
+    return res.status(400).json({
+      status: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  // Check if following
+  const followRelation = await Follow.findOne({
+    follower: userId,
+    following: frndid,
   });
-  res.json({ status: true, resolve: data });
+
+  if (!followRelation) {
+    return res.status(400).json({
+      status: false,
+      message: "Not following this user",
+    });
+  }
+
+  // Use session for atomic operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Remove follow relationship
+    await Follow.deleteOne(
+      {
+        follower: userId,
+        following: frndid,
+      },
+      { session }
+    );
+
+    // Update counts
+    await User.findByIdAndUpdate(
+      userId,
+      { $inc: { following_count: -1 } },
+      { session }
+    );
+
+    await User.findByIdAndUpdate(
+      frndid,
+      { $inc: { followers_count: -1 } },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    res.json({
+      status: true,
+      message: "Successfully unfollowed user",
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 });
 
+/**
+ * Search users by name or username
+ */
 export const finduser = asyncwrappe(async (req, res) => {
-  const name = `(?i)${req.body.name}`;
-  const result = await userSchema.find({ name: { $regex: name } });
-  res.json({ result });
+  const { query } = req.body;
+  const limit = parseInt(req.query.limit) || 20;
+
+  if (!query || query.trim().length === 0) {
+    return res.status(400).json({
+      status: false,
+      message: "Search query is required",
+    });
+  }
+
+  const searchRegex = new RegExp(query.trim(), "i");
+
+  const users = await User.find({
+    $or: [
+      { name: { $regex: searchRegex } },
+      { username: { $regex: searchRegex } },
+    ],
+  })
+    .select("-password")
+    .limit(limit)
+    .lean();
+
+  res.json({
+    status: true,
+    users,
+    count: users.length,
+  });
 });
 
+/**
+ * Get users that current user is following
+ */
 export const getfollowing = asyncwrappe(async (req, res) => {
-  const userid = req.userId;
-  const user = await userSchema.find({ _id: userid }).populate("following");
-  res.json({ user });
+  const userId = req.userId;
+  const limit = parseInt(req.query.limit) || 50;
+  const skip = parseInt(req.query.skip) || 0;
+
+  const following = await Follow.find({ follower: userId })
+    .select("following")
+    .populate({
+      path: "following",
+      select: "-password",
+    })
+    .limit(limit)
+    .skip(skip)
+    .lean();
+
+  const followingUsers = following.map((f) => f.following).filter(Boolean);
+
+  res.json({
+    status: true,
+    users: followingUsers,
+    count: followingUsers.length,
+  });
 });
 
+/**
+ * Get user's followers
+ */
+export const getfollowers = asyncwrappe(async (req, res) => {
+  const userId = req.userId;
+  const limit = parseInt(req.query.limit) || 50;
+  const skip = parseInt(req.query.skip) || 0;
+
+  const followers = await Follow.find({ following: userId })
+    .select("follower")
+    .populate({
+      path: "follower",
+      select: "-password",
+    })
+    .limit(limit)
+    .skip(skip)
+    .lean();
+
+  const followerUsers = followers.map((f) => f.follower).filter(Boolean);
+
+  res.json({
+    status: true,
+    users: followerUsers,
+    count: followerUsers.length,
+  });
+});
+
+/**
+ * Update profile picture
+ */
 export const addprofilepicture = asyncwrappe(async (req, res) => {
-  const userid = req.userId;
-  const image = req.body.image;
-  await userSchema.findByIdAndUpdate(userid, { $set: { profileImage: image } });
-  const data = await userSchema.findById(userid);
-  res.json({ status: true, user: data });
+  const userId = req.userId;
+  const { image } = req.body;
+
+  if (!image || !image.trim()) {
+    return res.status(400).json({
+      status: false,
+      message: "Image URL is required",
+    });
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: { profileImage: image } },
+    { new: true, select: "-password" }
+  ).lean();
+
+  res.json({
+    status: true,
+    message: "Profile picture updated",
+    user: updatedUser,
+  });
 });
 
+/**
+ * Set user online status
+ */
 export const setonline = asyncwrappe(async (req, res) => {
-  const userid = req.userId;
-  await userSchema.findByIdAndUpdate(userid, { isOnline: true });
-  res.json({ status: true, message: "User is online", userId: userid });
+  const userId = req.userId;
+
+  await User.findByIdAndUpdate(userId, {
+    isOnline: true,
+    lastSeen: new Date(),
+  });
+
+  res.json({
+    status: true,
+    message: "User is online",
+    userId,
+  });
 });
 
+/**
+ * Set user offline status
+ */
 export const setoffline = asyncwrappe(async (req, res) => {
-  const userid = req.body.userId;
-  const user = await userSchema.findByIdAndUpdate(
-    userid,
+  const { userId } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({
+      status: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
     {
       isOnline: false,
       lastSeen: new Date(),
     },
     { new: true, select: "-password" }
-  );
-  console.log("setoffline user:", user);
-  res.json({ status: true, message: "User is offline" });
+  ).lean();
+
+  res.json({
+    status: true,
+    message: "User is offline",
+    user,
+  });
 });
 
+/**
+ * Register user as online (alternative method)
+ */
 export const registerOnline = asyncwrappe(async (req, res) => {
-  console.log("user online", req.body);
-  const userid = req.body.userId;
-  const user = await userSchema.findByIdAndUpdate(
-    userid,
-    { isOnline: true },
+  const { userId } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({
+      status: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      isOnline: true,
+      lastSeen: new Date(),
+    },
     { new: true, select: "-password" }
-  );
-  res.json({ message: "user online registered", user });
+  ).lean();
+
+  res.json({
+    status: true,
+    message: "User online registered",
+    user,
+  });
 });

@@ -2,29 +2,20 @@ import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
   {
-    users: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-      },
+    type: { type: String, enum: ["direct", "group"], default: "direct" },
+    participants: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     ],
-    messages: [
-      {
-        roomId: String,
-        author: String,
-        text: String,
-        createdAt: Date,
-        upDateAt: Date,
-        send: Boolean,
-        messageSeen: { seen: Boolean, seenTime: Date },
-      },
-    ],
+    lastMessage: {
+      text: String,
+      sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      createdAt: Date,
+    },
+    unreadCounts: { type: Map, of: Number, default: {} },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const Chat = mongoose.model("Chat", chatSchema);
+chatSchema.index({ participants: 1, updatedAt: -1 });
 
-export default Chat;
+export default mongoose.model("Chat", chatSchema);
