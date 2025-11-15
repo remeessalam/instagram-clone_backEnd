@@ -42,8 +42,8 @@ export const getchat = asyncwrappe(async (req, res) => {
       type: "direct",
       participants: { $all: [friendId, userId] },
     })
-    .populate("participants", "_id name image isOnline lastSeen")
-    .populate("lastMessage.sender", "_id name image")
+    .populate("participants", "_id name profileImage isOnline lastSeen")
+    .populate("lastMessage.sender", "_id name profileImage")
     .lean();
 
   if (!chat) {
@@ -60,7 +60,7 @@ export const getchat = asyncwrappe(async (req, res) => {
     // Populate the newly created chat
     chat = await chatSchema
       .findById(chat._id)
-      .populate("participants", "_id name image isOnline lastSeen")
+      .populate("participants", "_id name profileImage isOnline lastSeen")
       .lean();
   }
 
@@ -129,7 +129,7 @@ export const addmessage = asyncwrappe(async (req, res) => {
   });
 
   // Populate sender information
-  await newMessage.populate("sender", "_id name image");
+  await newMessage.populate("sender", "_id name profileImage");
 
   // Update chat's lastMessage and unread counts
   const updateData = {
@@ -265,7 +265,7 @@ export const getMessages = asyncwrappe(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit))
-    .populate("sender", "_id name image")
+    .populate("sender", "_id name profileImage")
     .lean();
 
   const totalMessages = await messageSchema.countDocuments({ chatId });
@@ -293,8 +293,8 @@ export const getAllChats = asyncwrappe(async (req, res) => {
   const chats = await chatSchema
     .find({ participants: userId })
     .sort({ updatedAt: -1 })
-    .populate("participants", "_id name image isOnline lastSeen")
-    .populate("lastMessage.sender", "_id name image")
+    .populate("participants", "_id name profileImage isOnline lastSeen")
+    .populate("lastMessage.sender", "_id name profileImage")
     .lean();
 
   res.status(200).json({
