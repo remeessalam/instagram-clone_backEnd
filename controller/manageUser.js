@@ -48,7 +48,7 @@ export const updateProfile = asyncwrappe(async (req, res) => {
   const updatedUser = await User.findByIdAndUpdate(
     userId,
     { $set: updateData },
-    { new: true, runValidators: true, select: "-password" }
+    { new: true, runValidators: true, select: "-password" },
   ).lean();
 
   if (!updatedUser) {
@@ -210,20 +210,20 @@ export const follow = asyncwrappe(async (req, res) => {
           following: frndid,
         },
       ],
-      { session }
+      { session },
     );
 
     // Update counts
     await User.findByIdAndUpdate(
       userId,
       { $inc: { following_count: 1 } },
-      { session }
+      { session },
     );
 
     await User.findByIdAndUpdate(
       frndid,
       { $inc: { followers_count: 1 } },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -278,20 +278,20 @@ export const unfollow = asyncwrappe(async (req, res) => {
         follower: userId,
         following: frndid,
       },
-      { session }
+      { session },
     );
 
     // Update counts
     await User.findByIdAndUpdate(
       userId,
       { $inc: { following_count: -1 } },
-      { session }
+      { session },
     );
 
     await User.findByIdAndUpdate(
       frndid,
       { $inc: { followers_count: -1 } },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -312,17 +312,17 @@ export const unfollow = asyncwrappe(async (req, res) => {
  * Search users by name or username
  */
 export const finduser = asyncwrappe(async (req, res) => {
-  const { query } = req.body;
+  const { name } = req.body;
   const limit = parseInt(req.query.limit) || 20;
-
-  if (!query || query.trim().length === 0) {
+  console.log("Search query:", req.body.name);
+  if (!name || name.trim().length === 0) {
     return res.status(400).json({
       status: false,
       message: "Search query is required",
     });
   }
 
-  const searchRegex = new RegExp(query.trim(), "i");
+  const searchRegex = new RegExp(name.trim(), "i");
 
   const users = await User.find({
     $or: [
@@ -412,7 +412,7 @@ export const addprofilepicture = asyncwrappe(async (req, res) => {
   const updatedUser = await User.findByIdAndUpdate(
     userId,
     { $set: { profileImage: image } },
-    { new: true, select: "-password" }
+    { new: true, select: "-password" },
   ).lean();
 
   res.json({
@@ -459,7 +459,7 @@ export const setoffline = asyncwrappe(async (req, res) => {
       isOnline: false,
       lastSeen: new Date(),
     },
-    { new: true, select: "-password" }
+    { new: true, select: "-password" },
   ).lean();
 
   res.json({
@@ -488,7 +488,7 @@ export const registerOnline = asyncwrappe(async (req, res) => {
       isOnline: true,
       lastSeen: new Date(),
     },
-    { new: true, select: "-password" }
+    { new: true, select: "-password" },
   ).lean();
 
   res.json({
